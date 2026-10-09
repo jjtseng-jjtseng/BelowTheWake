@@ -6,6 +6,7 @@ import type { Save } from './state';
 import type { Encounter } from './combat';
 import { helmCameraPose } from './view';
 import { loadWithTimeout } from './loading';
+import { ROOM_Z } from './harbor';
 export const canvas=document.querySelector<HTMLCanvasElement>('#sea')!;
 export const engine=new Engine(canvas,true,{stencil:true,antialias:true,powerPreference:'high-performance'});
 export const scene=new Scene(engine);scene.fogMode=Scene.FOGMODE_EXP2;scene.collisionsEnabled=true;
@@ -59,6 +60,16 @@ export function updateSeaMonsters(t:number,e:Encounter|null){
 let ocean:Mesh;
 let diver:TransformNode,captain:TransformNode,helm:TransformNode,crane:TransformNode,sonar:TransformNode,locker:TransformNode,liftBag:TransformNode,deckCargo:TransformNode;
 let currentAnimation='',liftUntil=0,worldTime=0;
+let workshopRoom:TransformNode,walker:TransformNode,merchant:TransformNode;
+let walkingAnimation='',harborActive=false;
+const rain:TransformNode[]=[];
+export function setHarborRoom(active:boolean){harborActive=active;workshopRoom.setEnabled(active);walker.setEnabled(active);merchant.setEnabled(active);camera.maxZ=active?60:800;}
+export function updateHarborPlayer(x:number,z:number,yaw:number,moving:boolean){
+  walker.position.set(x,.02,ROOM_Z+z);walker.rotation.y=yaw;
+  const clip=moving?'Walk':'Idle';
+  if(clip!==walkingAnimation){const groups=walker.metadata.animations as AnimationGroup[];groups.forEach(a=>a.stop());groups.find(a=>a.name.endsWith('-'+clip))?.start(true);walkingAnimation=clip;}
+  camera.position.set(x*.16,10.8,ROOM_Z-12.8);camera.setTarget(new Vector3(0,.3,ROOM_Z+.5));camera.fov=.85;
+}
 const risingCargo:{root:TransformNode;from:Vector3;start:number;duration:number}[]=[];
 const physicalGear=['air','cutter','suit','bag','fins','deep'];
 export function visibleEquipment(upgrades:UpgradeId[]){return upgrades.map(id=>({id,on:id==='lift'?'boat crane and chain':id==='sonar'?'roof aerial and helm display':id==='bag'?'diver sling and deck locker':'diver rig'}));}
@@ -69,7 +80,7 @@ export function animateLift(id:string){
   const bag=liftBag.clone('deployed lift bag',root)!;bag.position.set(0,2.5,0);bag.setEnabled(true);
   risingCargo.push({root,from:root.position.clone(),start:worldTime,duration:Math.max(6,-root.position.y/2.8)});
 }
-export function presentationState(){return {diverVisible:diver?.isEnabled(),animation:currentAnimation,playingAnimations:(diver?.metadata.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name),craneVisible:crane?.isEnabled(),sonarVisible:sonar?.isEnabled(),lockerVisible:locker?.isEnabled(),diverGear:diver?.getChildMeshes().filter(m=>m.isEnabled(false)&&physicalGear.some(id=>m.name.includes('-'+id+'_'))).map(m=>m.name),lifting:risingCargo.length,buoys:[...discoveryBuoys].filter(([,b])=>b.buoy.isEnabled()).map(([id])=>id),visibleIslands:[...islandGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),visibleWrecks:[...siteGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),harpoonVisible:harpoon?.isEnabled(),monsterAnimations:[...bossRoots].filter(([,r])=>r.isEnabled()).map(([id,r])=>({id,animations:r.getChildren().flatMap(n=>(n.metadata?.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name))}))};}
+export function presentationState(){return {harborActive,walkingAnimation,walkerPosition:walker?{x:walker.position.x,z:walker.position.z-ROOM_Z}:null,diverVisible:diver?.isEnabled(),animation:currentAnimation,playingAnimations:(diver?.metadata.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name),craneVisible:crane?.isEnabled(),sonarVisible:sonar?.isEnabled(),lockerVisible:locker?.isEnabled(),diverGear:diver?.getChildMeshes().filter(m=>m.isEnabled(false)&&physicalGear.some(id=>m.name.includes('-'+id+'_'))).map(m=>m.name),lifting:risingCargo.length,buoys:[...discoveryBuoys].filter(([,b])=>b.buoy.isEnabled()).map(([id])=>id),visibleIslands:[...islandGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),visibleWrecks:[...siteGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),harpoonVisible:harpoon?.isEnabled(),monsterAnimations:[...bossRoots].filter(([,r])=>r.isEnabled()).map(([id,r])=>({id,animations:r.getChildren().flatMap(n=>(n.metadata?.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name))}))};}
 export function safeDiveCamera(desired:Vector3){
   const delta=desired.subtract(swimmer.position),length=delta.length();
   const hit=scene.pickWithRay(new Ray(swimmer.position,delta.normalize(),length),m=>m.checkCollisions&&m.isEnabled()&&m.isVisible);
@@ -108,7 +119,7 @@ export function updatePlayer(diving:boolean,thirdPerson:boolean,helmView:boolean
   if(!diver)return;
   // Hide the rig when wreck geometry pushes the camera inside its silhouette.
   // The near camera then gives a clear view rather than a screen-filling head.
-  diver.setEnabled(diving&&thirdPerson&&Vector3.Distance(camera.position,swimmer.position)>2.6);captain.setEnabled(!diving&&!helmView);
+  diver.setEnabled(diving&&thirdPerson&&Vector3.Distance(camera.position,swimmer.position)>2.6);captain.setEnabled(!diving&&!helmView&&!harborActive);
   diver.position.copyFrom(swimmer.position);diver.position.y-=moving?.25:.85;
   diver.rotation.set(moving?Math.PI/2+pitch:0,yaw,0);
   const animation=recovering?'Recover':moving?'Swim':'Idle';
@@ -122,10 +133,10 @@ export function updatePlayer(diving:boolean,thirdPerson:boolean,helmView:boolean
   sonar.rotation.y=t*.5;
 }
 function waterSetup(){
-  Effect.ShadersStore['oceanVertexShader']=`precision highp float;attribute vec3 position;uniform mat4 worldViewProjection;uniform float time;varying vec3 pos;void main(){vec3 p=position;p.y+=sin(p.x*.065+p.z*.035+time*.8)*.17+sin(p.x*.04-p.z*.09-time*.65)*.12;pos=p;gl_Position=worldViewProjection*vec4(p,1.);}`;
-  Effect.ShadersStore['oceanFragmentShader']=`precision highp float;varying vec3 pos;uniform float time;uniform vec3 eye;float waves(vec2 p){return sin(p.x*.22+p.y*.12+time*.7)*.45+sin(p.x*.09-p.y*.18-time*.8)*.3+sin(p.x*.47+p.y*.31+time*.6)*.12;}void main(){float w=waves(pos.xz);vec3 n=normalize(vec3(-cos(pos.x*.22+pos.z*.12+time*.7)*.13,1.,-cos(pos.x*.09-pos.z*.18-time*.8)*.1));vec3 v=normalize(eye-pos);float f=pow(1.-max(0.,dot(n,v)),3.);float s=pow(max(0.,dot(reflect(normalize(vec3(-.6,-1.,.4)),n),v)),100.);vec3 c=mix(vec3(.035,.44,.51),vec3(.18,.65,.66),w*.3+.35);c=mix(c,vec3(.56,.79,.86),f*.65);c+=vec3(1.,.91,.7)*s*.5;gl_FragColor=vec4(c,.94);}`;
+  Effect.ShadersStore['oceanVertexShader']=`precision highp float;attribute vec3 position;uniform mat4 worldViewProjection;uniform float time;uniform float storm;varying vec3 pos;void main(){vec3 p=position;p.y+=(sin(p.x*.065+p.z*.035+time*.8)*.17+sin(p.x*.04-p.z*.09-time*.65)*.12)*(1.+storm*2.5);pos=p;gl_Position=worldViewProjection*vec4(p,1.);}`;
+  Effect.ShadersStore['oceanFragmentShader']=`precision highp float;varying vec3 pos;uniform float time;uniform float storm;uniform vec3 eye;float waves(vec2 p){return sin(p.x*.22+p.y*.12+time*.7)*.45+sin(p.x*.09-p.y*.18-time*.8)*.3+sin(p.x*.47+p.y*.31+time*.6)*.12;}void main(){float w=waves(pos.xz);vec3 n=normalize(vec3(-cos(pos.x*.22+pos.z*.12+time*.7)*.13,1.,-cos(pos.x*.09-pos.z*.18-time*.8)*.1));vec3 v=normalize(eye-pos);float f=pow(1.-max(0.,dot(n,v)),3.);float s=pow(max(0.,dot(reflect(normalize(vec3(-.6,-1.,.4)),n),v)),100.);vec3 c=mix(vec3(.035,.44,.51),vec3(.18,.65,.66),w*.3+.35);c=mix(c,vec3(.56,.79,.86),f*.65);c+=vec3(1.,.91,.7)*s*.5;c=mix(c,c*vec3(.4,.52,.62),storm*.8);gl_FragColor=vec4(c,.94);}`;
   ocean=MeshBuilder.CreateGround('living ocean',{width:1000,height:1000,subdivisions:150},scene);
-  ocean.material=new ShaderMaterial('ocean',scene,{vertex:'ocean',fragment:'ocean'},{attributes:['position'],uniforms:['worldViewProjection','time','eye'],needAlphaBlending:true});ocean.alphaIndex=5;
+  ocean.material=new ShaderMaterial('ocean',scene,{vertex:'ocean',fragment:'ocean'},{attributes:['position'],uniforms:['worldViewProjection','time','eye','storm'],needAlphaBlending:true});ocean.alphaIndex=5;
   const sand=MeshBuilder.CreateGround('rolling seabed',{width:1000,height:1200,subdivisions:150,updatable:true},scene);
   const verts=sand.getVerticesData('position')!;for(let i=0;i<verts.length;i+=3)verts[i+1]=floorHeight(verts[i],verts[i+2]);sand.updateVerticesData('position',verts);sand.createNormals(true);
   const mat=new StandardMaterial('sand',scene);mat.diffuseColor=new Color3(.61,.63,.43);mat.specularColor=Color3.Black();sand.material=mat;sand.checkCollisions=false;
@@ -147,6 +158,12 @@ export async function buildWorld(onProgress:(name:string,loaded:number)=>void=()
   for(const m of captain.getChildMeshes())if(m.name.includes('-base_')||physicalGear.some(id=>m.name.includes('-'+id+'_')))m.setEnabled(false);
   (captain.metadata.animations as AnimationGroup[]).find(a=>a.name.endsWith('-Idle'))?.start(true);
   diver.setEnabled(false);
+  workshopRoom=await model('harbor-workshop',new Vector3(0,0,ROOM_Z),1);workshopRoom.setEnabled(false);
+  walker=await model('diver',new Vector3(0,0,ROOM_Z-3),1.15);
+  merchant=await model('diver',new Vector3(4.1,0,ROOM_Z+4.3),1.15);merchant.rotation.y=Math.PI;
+  for(const person of [walker,merchant]){for(const m of person.getChildMeshes())if(m.name.includes('-base_')||physicalGear.some(id=>m.name.includes('-'+id+'_')))m.setEnabled(false);person.setEnabled(false);}
+  (merchant.metadata.animations as AnimationGroup[]).find(a=>a.name.endsWith('-Idle'))?.start(true);
+  for(let i=0;i<2;i++){const r=await model('storm-rain',Vector3.Zero(),1);r.setEnabled(false);rain.push(r);}
   for(const s of SITES){
     const group=new TransformNode('charted wreck '+s.id,scene);siteGroups.set(s.id,group);
     const wreck=await model('ship-wreck',new Vector3(s.x,-s.depth,s.z),s.scale);wreck.rotation.y=s.angle;wreck.parent=group;
@@ -177,12 +194,12 @@ export async function buildWorld(onProgress:(name:string,loaded:number)=>void=()
   await model('barrel',new Vector3(10,.9,-120),1.2);await model('crate',new Vector3(7,.9,-120),1.2);
   const flag=await model('flag-pennant',new Vector3(2,.9,-122),2.2);flag.rotation.y=.5;
 }
-export function renderWorld(t:number,heading:number,diving:boolean,helmView=false){
+export function renderWorld(t:number,heading:number,diving:boolean,helmView=false,storm=0){
   const elapsed=Math.min(.05,Math.max(0,t-worldTime));worldTime=t;
   for(let i=bolts.length-1;i>=0;i--){const b=bolts[i];b.elapsed+=elapsed;const u=Math.min(1,b.elapsed/.32);b.root.position.copyFrom(Vector3.Lerp(b.from,b.to,u));if(u>=1){b.root.dispose();bolts.splice(i,1);}}
 
   for(let i=risingCargo.length-1;i>=0;i--){const cargo=risingCargo[i],progress=(t-cargo.start)/cargo.duration;if(progress>=1){cargo.root.dispose();risingCargo.splice(i,1);}else{cargo.root.position.copyFrom(cargo.from);cargo.root.position.y=cargo.from.y+(1-cargo.from.y)*progress;cargo.root.rotation.y+=.002;}}
-  boat.position.y=.1+Math.sin(t*1.25)*.12;boat.rotation.set(Math.sin(t*.8)*.015,heading,Math.sin(t)*.025);
+  boat.position.y=.1+Math.sin(t*1.25)*(.12+storm*.25);boat.rotation.set(Math.sin(t*.8)*(.015+storm*.015),heading,Math.sin(t)*(.025+storm*.015));
   if(helmView){
     const pose=helmCameraPose(boat.computeWorldMatrix(true));
     camera.position.copyFrom(pose.position);camera.upVector.copyFrom(pose.up);
@@ -190,10 +207,10 @@ export function renderWorld(t:number,heading:number,diving:boolean,helmView=fals
   }
   buoys.forEach((b,i)=>{b.position.y=Math.sin(t*1.1+i)*.12;b.rotation.z=Math.sin(t+i)*.04;});
   fish.forEach(f=>{const a=t*.17+f.phase;f.root.position.set(f.center.x+Math.cos(a)*f.radius,f.center.y+Math.sin(t*.6+f.phase)*.6,f.center.z+Math.sin(a)*f.radius*.7);f.root.rotation.set(0,-a+Math.PI*.5,Math.sin(t*4+f.phase)*.05);});
-  ocean.setEnabled(!diving);lamp.intensity=diving?.12:0;lamp.position.copyFrom(camera.position);lamp.direction.copyFrom(camera.getForwardRay().direction);
+  ocean.setEnabled(!diving&&!harborActive);rain.forEach((r,i)=>{r.setEnabled(!diving&&!harborActive&&storm>.4);r.position.set(boat.position.x,2-((t*18)%25)+i*25,boat.position.z);});lamp.intensity=diving?.12:0;lamp.position.copyFrom(camera.position);lamp.direction.copyFrom(camera.getForwardRay().direction);
   const deep=diving?Math.min(1,-swimmer.position.y/55):0;
-  scene.fogColor=diving?Color3.Lerp(new Color3(.03,.36,.39),new Color3(.025,.12,.22),deep):new Color3(.58,.81,.88);
-  scene.fogDensity=diving?.021+deep*.01:.0018;scene.clearColor=new Color4(scene.fogColor.r,scene.fogColor.g,scene.fogColor.b,1);
-  sky.intensity=diving?.72-deep*.25:1.8;sun.intensity=diving?.32:2.3;
-  (ocean.material as ShaderMaterial).setFloat('time',t).setVector3('eye',camera.position);scene.render();
+  scene.fogColor=diving?Color3.Lerp(new Color3(.03,.36,.39),new Color3(.025,.12,.22),deep):harborActive?new Color3(.06,.15,.18):Color3.Lerp(new Color3(.58,.81,.88),new Color3(.13,.21,.27),storm);
+  scene.fogDensity=harborActive?0:diving?.021+deep*.01:.0018+storm*.004;scene.clearColor=new Color4(scene.fogColor.r,scene.fogColor.g,scene.fogColor.b,1);
+  sky.intensity=diving?.72-deep*.25:harborActive?1.55:1.8-storm*.8;sun.intensity=diving?.32:harborActive?1.6:2.3-storm*1.9;
+  (ocean.material as ShaderMaterial).setFloat('time',t).setFloat('storm',storm).setVector3('eye',camera.position);scene.render();
 }

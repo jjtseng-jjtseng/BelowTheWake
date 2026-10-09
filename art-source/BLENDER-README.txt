@@ -43,3 +43,12 @@ the roof/funnel by .35 Blender meters, and extends the window posts and mullion.
 It saves boat-player-clearview.blend and exports the updated boat-player.glb.
 The base boat-player.blend is retained as the original fitted source. Runtime
 roof fittings are lifted by .84 world meters to match the 2.4-scale tug.
+
+Harbor and weather assets:
+build-harbor-workshop.py assembles the downloaded Kenney Furniture Kit CC0
+props from furniture-originals/ and the existing licensed nautical props. It
+authors the cutaway timber shell and helm wall decoration in Blender, then
+saves harbor-workshop.blend and exports public/models/harbor-workshop.glb.
+build-storm-rain.py creates the atmospheric rain curtain in Blender, saves
+storm-rain.blend, and exports public/models/storm-rain.glb.
+The original Furniture Kit download and license are retained in this folder.

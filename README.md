@@ -51,7 +51,9 @@ a 20-second timeout and an asset-specific progress or retry message.
 | --- | --- |
 | Throttle / reverse | W / S |
 | Steer the boat | A / D |
-| Swim | W / A / S / D |
+| Swim / walk ashore | W / A / S / D |
+| Walk to a workshop counter | Click its floating icon |
+| Next destination without the map | Double-chevron button beside the bearing |
 | Look underwater | Click the scene, then move the mouse; arrow keys also work |
 | Ascend / descend | Space / Shift (or C to descend) |
 | Interact / dive / recover / dock | E or the onscreen prompt |
@@ -62,7 +64,7 @@ a 20-second timeout and an asset-specific progress or retry message.
 | Change camera view | V or camera icon |
 | Pause / release mouse | Escape |
 
-Follow the chart to the Copper Finch, dive, and look for gold salvage markers and
+Follow the gold trail across the water to the Copper Finch, dive, and look for gold salvage markers and
 blue bottled letters. Return aboard to secure small finds, then sail back to
 Marrow Harbor to sell cargo and fit upgrades. The reinforced suit opens the
 Lantern; the abyssal rig opens the Bellwether. Heavy finds need the deck crane
@@ -126,6 +128,24 @@ The primary target is a desktop or laptop with a keyboard and mouse. Basic
 touch controls are included, but mobile play has not been validated on a
 physical device.
 
+The gold water trail routes around unlocked islands. A larger destination marker,
+left/right edge cues and the bearing arrow work together in all boat views.
+The double-chevron button cycles unlocked destinations without opening the chart.
+
+At Marrow Harbor, E disembarks into a cutaway workshop. Walk with WASD, or click
+a floating counter icon to walk there automatically. The equipment bench opens
+upgrade fitting; the salvage counter buys secured cargo. The door returns you
+to the boat. Walk and idle clips are the original downloaded sailor animations.
+Closing a shop menu returns to the room. Reloading ashore safely resumes aboard.
+
+Occasional storms unlock at level 4: 25 seconds of warning, 65 seconds of storm,
+then 4-6 clear minutes. The first warning arrives after 150 seconds of eligible
+sailing/diving. Rain, darker skies, stronger waves and a gentle crosswind change
+the crossing. The gold trail stays readable. The harbor and the water near
+unlocked islands provide shelter from drift. Storms never damage cargo or take
+away upgrades; no new storm begins during a guardian fight. Weather countdowns
+persist with the save and pause in menus and ashore.
+
 ## Artwork
 
 Representational 3D artwork uses the following stylized nautical sources,
@@ -134,6 +154,9 @@ Code supplies terrain, water, lighting, motion, UI, and gameplay effects.
 
 - [Kenney Pirate Kit](https://kenney.nl/assets/pirate-kit), CC0: wrecks,
   treasure, palms, rocks, docks, and harbor scenery.
+- [Kenney Furniture Kit](https://kenney.nl/assets/furniture-kit), CC0: workshop
+  tables, shelves, benches, chair, lamps, rug and coat rack. Downloaded original
+  meshes are bundled, with Blender set dressing and nautical materials.
 - [Kenney Watercraft Kit](https://kenney.nl/assets/watercraft-kit), CC0: tug
   boat and navigation buoys.
 - [Robin Lamb, Low Poly Angel Fish](https://opengameart.org/content/low-poly-angel-fish),
@@ -157,7 +180,9 @@ Code supplies terrain, water, lighting, motion, UI, and gameplay effects.
 Developer QA uses the production build on a separate origin (port 5174),
 leaving the main port 5173 save untouched. Run `npx tsx qa/build-trials.ts`
 then `node qa/serve.mjs` and visit `http://localhost:5174/trials`. Fixtures
-cover a fresh voyage, a first discovery, and all three guardian milestones.
+cover a fresh voyage, a first discovery, all three guardian milestones, the
+walkable workshop, and a storm warning/crossing. Set PORT to use another isolated
+port if 5174 is already running.
 
 The Kenney tug has Blender-adapted cabin windows and a fitted wooden wheel,
 gauges and throttle. The sonar, locker, lift bag and rigged diving equipment
@@ -177,3 +202,13 @@ Vite, TypeScript, Babylon.js, and static GLB assets. No backend, account,
 payments, analytics, or server save is required. The game also exposes bounded
 WebMCP actions for reading voyage state, chart destination, ordinary navigation
 controls, and the same harbor transactions available in the visible interface.
+
+## Commit signing
+
+This publishing checkout uses a dedicated Ed25519 SSH signing key and automatic
+commit signing. The private key stays in the Windows user's .ssh directory and
+is never included in Git or the deployed website. GitHub must have the public
+key registered as a **Signing Key** for its Verified badge. Fresh clones need
+their own local signing configuration and an account-registered key; Git config
+and private keys deliberately do not travel with the repository. Existing
+unsigned commits retain their original hashes.

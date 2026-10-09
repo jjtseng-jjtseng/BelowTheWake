@@ -1,8 +1,9 @@
 import { LOOT, SITES, ISLANDS, BOSSES, lootFor, UPGRADES, type UpgradeId } from './data';
 import { level, migrateExplored } from './progression';
-export interface Save { version:1; money:number; upgrades:UpgradeId[]; collected:string[]; explored:string[]; islands:string[]; defeated:string[]; cargo:string[]; clues:string[]; completed:boolean; dives:number; earnings:number; started:boolean; guideSeen:boolean; boat:[number,number,number]; settings:{ sound:boolean; sensitivity:number; quality:'high'|'low'; boatView:'chase'|'helm'|'orbit'; diveView:'first'|'third' } }
+import { newWeather, parseWeather, type Weather } from './weather';
+export interface Save { version:1; weather:Weather; money:number; upgrades:UpgradeId[]; collected:string[]; explored:string[]; islands:string[]; defeated:string[]; cargo:string[]; clues:string[]; completed:boolean; dives:number; earnings:number; started:boolean; guideSeen:boolean; boat:[number,number,number]; settings:{ sound:boolean; sensitivity:number; quality:'high'|'low'; boatView:'chase'|'helm'|'orbit'; diveView:'first'|'third' } }
 export const SAVE_KEY='below-the-wake-v1';
-export function newSave():Save { return {version:1,money:0,upgrades:[],collected:[],explored:[],islands:[],defeated:[],cargo:[],clues:[],completed:false,dives:0,earnings:0,started:false,guideSeen:false,boat:[0,-105,0],settings:{sound:true,sensitivity:1,quality:'high',boatView:'chase',diveView:'third'}}; }
+export function newSave():Save { return {version:1,weather:newWeather(),money:0,upgrades:[],collected:[],explored:[],islands:[],defeated:[],cargo:[],clues:[],completed:false,dives:0,earnings:0,started:false,guideSeen:false,boat:[0,-105,0],settings:{sound:true,sensitivity:1,quality:'high',boatView:'chase',diveView:'third'}}; }
 export function parseSave(raw:string|null):Save {
   if(!raw)return newSave();
   try {
@@ -12,7 +13,7 @@ export function parseSave(raw:string|null):Save {
     const clean=(a:unknown):string[]=>Array.isArray(a)?[...new Set(a.filter(v=>typeof v==='string' && ids.has(v)))]:[];
     const upgrades=Array.isArray(x.upgrades)?[...new Set<UpgradeId>(x.upgrades.filter((u:UpgradeId)=>UPGRADES.some(v=>v.id===u)))]:[];
     const collected=clean(x.collected), cargo=clean(x.cargo).filter(id=>collected.includes(id));
-    return {...fresh,money:Math.floor(x.money),upgrades,collected,cargo,
+    return {...fresh,weather:parseWeather(x.weather),money:Math.floor(x.money),upgrades,collected,cargo,
       explored:[...new Set([...migrateExplored(collected),...(Array.isArray(x.explored)?x.explored.filter((id:string)=>SITES.some(v=>v.id===id)):[])])],
       islands:Array.isArray(x.islands)?[...new Set<string>(x.islands.filter((id:string)=>ISLANDS.some(v=>v.id===id)))]:[],
       defeated:Array.isArray(x.defeated)?[...new Set<string>(x.defeated.filter((id:string)=>BOSSES.some(v=>v.id===id)))]:[],
