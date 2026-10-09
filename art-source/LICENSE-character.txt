@@ -1,0 +1,11 @@
+Henry by Quaternius, from the Pirate Kit
+Source: https://poly.pizza/m/yEdSk8tRKc
+Author's pack: https://quaternius.com/packs/piratekit.html
+Downloaded GLB: https://static.poly.pizza/b91485bd-aaa0-4a9a-802c-b16e08ae05e7.glb
+License: Creative Commons CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Below the Wake adaptation: diver.glb and thumbnails/diver.png.
+Blender changes: removed the lute, retained the original Idle, Walk, Wave,
+and Punch animation clips (Punch renamed Recover); fitted and rigged diving
+equipment, and added a swimming animation. Equipment is toggled by upgrades.

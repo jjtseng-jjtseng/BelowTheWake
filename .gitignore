@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+test-results/
+.firebase/
+.openai/
+.env
+.env.*
+!.env.example
+*service-account*.json
+*.blend1
+__pycache__/

@@ -1,0 +1,10 @@
+Low Poly Angel Fish
+Creator: Robin Lamb
+Source: https://opengameart.org/content/low-poly-angel-fish
+License: CC0 (Creative Commons Zero)
+License terms: https://creativecommons.org/publicdomain/zero/1.0/
+
+The original Blender model was converted to GLB for this game.
+The fish geometry and material were preserved. Source cameras, lights,
+and the separate bubble object were excluded from the export.
+

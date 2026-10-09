@@ -1,0 +1,22 @@
+All new representational geometry for the visual upgrade pass was made in
+Blender 5.1. No generated illustrations or hand-drawn placeholder props are
+used. Equipment pictures are Blender renders of the actual models.
+
+Downloaded source meshes:
+- Kenney Watercraft Kit tug: adapted cabin windows, corrected bow direction.
+- Quaternius Henry: original rigged animated character, fitted diving gear.
+- Max Hancock Crane: adapted upper works with new chain (CC BY 3.0).
+
+Blender-authored additions: fitted wooden wheel, gauges, throttle and cabin
+details; roof sonar; deck cargo locker; rigged diving mask, harness, regulator,
+air tanks, cutter, reinforced suit pieces, fins and bag; salvage lift bag.
+The tug's cockpit uses the downloaded boat and a fitted Blender interior.
+
+Editable .blend files and reproducible Blender scripts are supplied separately
+in the Blender-assets archive. Source-specific licenses are beside the models.
+Interface icons are Lucide SVGs; their ISC/MIT text is in icons/LICENSE.txt.
+
+Expansion: Quaternius Spear fitted/normalized in Blender as a harpoon bolt,
+with a Blender-authored brass swivel, wood bed, navy pedestal and rope reel.
+Quaternius Shark and Tentacle downloaded with their original skeletal clips.
+No monster meshes were generated or approximated with primitive shapes.

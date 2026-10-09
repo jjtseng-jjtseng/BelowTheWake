@@ -1,0 +1,13 @@
+Crane by Max Hancock
+Source: https://poly.pizza/m/aZFdGwasy60
+Downloaded GLB: https://static.poly.pizza/a7ba3c60-1efe-4ca5-8e38-fed851d46a51.glb
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+License and legal code: https://creativecommons.org/licenses/by/3.0/
+https://creativecommons.org/licenses/by/3.0/legalcode
+
+Below the Wake adaptation: deck-crane.glb and thumbnails/lift.png.
+Adapted in Blender: removed the land crane's legs, resized and repositioned
+the upper works for a boat deck, changed materials to the game's brass/navy
+palette, and added a modelled chain. Runtime code animates the chain and hook.
+This adaptation retains the source's CC BY 3.0 attribution requirement.
+No endorsement by the original author is implied.
