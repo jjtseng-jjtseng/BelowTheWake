@@ -221,6 +221,14 @@ controls, and the same harbor transactions available in the visible interface.
 
 ## Commit signing
 
+Publish source updates to both [BelowTheWake](https://github.com/jjtseng-jjtseng/BelowTheWake)
+and [ShipExplorer](https://github.com/jjtseng-jjtseng/ShipExplorer) with
+`npm run publish:repos` from a clean, committed `main` branch. The command checks
+that both remote histories can advance safely, pushes without forcing, and
+verifies that both branches point to the local commit. If a network failure
+interrupts one push, rerun the command after resolving it. Firebase hosting is
+still published separately with `npm run deploy`.
+
 This publishing checkout uses a dedicated Ed25519 SSH signing key and automatic
 commit signing. The private key stays in the Windows user's .ssh directory and
 is never included in Git or the deployed website. GitHub must have the public
