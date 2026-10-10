@@ -71,6 +71,22 @@ Lantern; the abyssal rig opens the Bellwether. Heavy finds need the deck crane
 and its lift bags.
 Both route fragments are needed to recover the final strongbox.
 
+The gold course updates automatically when you return aboard: sellable cargo
+points home, and an empty hold points to the nearest unfinished wreck that
+your equipment can recover. Leaving the workshop chooses your next reachable
+expedition. Completed wrecks are skipped by the next-destination button; a
+manual chart selection is saved between sessions.
+
+Each wreck has a fitted, swimmable stern cabin. Approach its chained doorway
+and press E with the salvage cutter equipped; the three-second cut swings the
+door open permanently. Swim through the doorway to collect three separate
+existing cargo/letter finds. Cutting grants no cargo, money, or XP. Interior
+markers and pickups require you to be inside; the entrance automatically uses
+a close camera view. R leads out through the doorway before surfacing.
+Existing recovered item IDs, values, money, levels and sold cargo are retained.
+Legacy recovered cabin items leave their associated door open.
+
+
 Exploration now has ten levels. First wreck dives earn 60 XP, secured finds
 earn 45 XP each, first island landings earn 70 XP, and guardians earn 240 XP.
 Rewards only count once. New wrecks, islands and sea guardians physically
@@ -212,3 +228,13 @@ key registered as a **Signing Key** for its Verified badge. Fresh clones need
 their own local signing configuration and an account-registered key; Git config
 and private keys deliberately do not travel with the repository. Existing
 unsigned commits retain their original hashes.
+
+### Wreck cabin sources
+
+`art-source/build-wreck-cabin.py` adapts the existing Kenney Pirate Kit wreck
+in Blender, clearing the raised stern decorations and fitting a timber cabin,
+sealed sea-glass windows, swinging door and rusted chain. The desk is the
+downloaded Kenney Furniture Kit table (CC0); all loose treasure and letters
+reuse the licensed nautical models. Sources are retained as
+`ship-wreck-cabined.blend` and `wreck-cabin.blend`, alongside the rebuild script.
+No cabin representational geometry is generated in the game at runtime.

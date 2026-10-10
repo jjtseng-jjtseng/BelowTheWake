@@ -52,3 +52,11 @@ saves harbor-workshop.blend and exports public/models/harbor-workshop.glb.
 build-storm-rain.py creates the atmospheric rain curtain in Blender, saves
 storm-rain.blend, and exports public/models/storm-rain.glb.
 The original Furniture Kit download and license are retained in this folder.
+
+WRECK CABINS
+build-wreck-cabin.py uses existing Kenney Pirate Kit ship-wreck.glb and
+Furniture Kit table.glb (CC0; original licenses retained). In Blender it
+clears raised stern decorations, fits a cabin with sealed sea-glass windows,
+a working door hinge, and chained lock. Exports ship-wreck-cabined.glb,
+wreck-cabin.glb, wreck-cabin-door.glb, wreck-cabin-chain.glb. Saved Blender
+sources accompany the script. Cargo models are unchanged online Kenney assets.

@@ -9,6 +9,9 @@ const fixture=(sites:string[],x:number,z:number,heading=0)=>{
 };
 const cases:Record<string,Save>={
   'Fresh voyage':newSave(),
+  'Cutters and Copper Finch cabin':{...newSave(),started:true,guideSeen:true,upgrades:['cutter','air','fins','bag'],boat:[-38+Math.sin(.5)*16,-22+Math.cos(.5)*16,.5+Math.PI]},
+  'Completed Copper Finch automatically finds next wreck':{...fixture(['finch'],-38,-5),course:'finch'},
+  'Completed wreck with cargo automatically guides to shop':{...fixture(['finch'],-38,-5),cargo:['finch-coins'],course:'finch'},
   'Undiscovered Pearl Runner':{...fixture(['finch'],74,-56),collected:['finch-copper','finch-coins','finch-porcelain'],explored:['finch']},
   'Pearl Cay landing':fixture(['finch'],124,-10),
   'Reef Jaw sea trial':fixture(['finch'],132,55),

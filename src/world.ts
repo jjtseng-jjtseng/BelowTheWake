@@ -7,6 +7,7 @@ import type { Encounter } from './combat';
 import { helmCameraPose } from './view';
 import { loadWithTimeout } from './loading';
 import { ROOM_Z } from './harbor';
+import { cabinOrigin, cabinCamera } from './cabins';
 export const canvas=document.querySelector<HTMLCanvasElement>('#sea')!;
 export const engine=new Engine(canvas,true,{stencil:true,antialias:true,powerPreference:'high-performance'});
 export const scene=new Scene(engine);scene.fogMode=Scene.FOGMODE_EXP2;scene.collisionsEnabled=true;
@@ -19,6 +20,9 @@ export const swimmer=MeshBuilder.CreateSphere('swimmer collider',{diameter:1,seg
 const cache=new Map<string,AssetContainer>();
 let reportLoading:(name:string,loaded:number)=>void=()=>{};
 export const lootRoots=new Map<string,TransformNode>();
+const cabins=new Map<string,{door:TransformNode;chain:TransformNode;open:boolean}>();
+export function syncCabins(opened:string[]){for(const [id,c]of cabins){c.open=opened.includes(id);c.chain.setEnabled(!c.open);}}
+export function cabinPresentation(){return [...cabins].map(([id,c])=>({id,open:c.open,doorAngle:c.door.rotation.y}));}
 const fish:{root:TransformNode;center:Vector3;phase:number;radius:number}[]=[];
 const buoys:TransformNode[]=[];
 const siteGroups=new Map<string,TransformNode>(),islandGroups=new Map<string,TransformNode>();
@@ -82,6 +86,7 @@ export function animateLift(id:string){
 }
 export function presentationState(){return {harborActive,walkingAnimation,walkerPosition:walker?{x:walker.position.x,z:walker.position.z-ROOM_Z}:null,diverVisible:diver?.isEnabled(),animation:currentAnimation,playingAnimations:(diver?.metadata.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name),craneVisible:crane?.isEnabled(),sonarVisible:sonar?.isEnabled(),lockerVisible:locker?.isEnabled(),diverGear:diver?.getChildMeshes().filter(m=>m.isEnabled(false)&&physicalGear.some(id=>m.name.includes('-'+id+'_'))).map(m=>m.name),lifting:risingCargo.length,buoys:[...discoveryBuoys].filter(([,b])=>b.buoy.isEnabled()).map(([id])=>id),visibleIslands:[...islandGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),visibleWrecks:[...siteGroups].filter(([,r])=>r.isEnabled()).map(([id])=>id),harpoonVisible:harpoon?.isEnabled(),monsterAnimations:[...bossRoots].filter(([,r])=>r.isEnabled()).map(([id,r])=>({id,animations:r.getChildren().flatMap(n=>(n.metadata?.animations as AnimationGroup[]||[]).filter(a=>a.isPlaying).map(a=>a.name))}))};}
 export function safeDiveCamera(desired:Vector3){
+  const adjusted=cabinCamera(swimmer.position,desired);desired=new Vector3(adjusted.x,adjusted.y,adjusted.z);
   const delta=desired.subtract(swimmer.position),length=delta.length();
   const hit=scene.pickWithRay(new Ray(swimmer.position,delta.normalize(),length),m=>m.checkCollisions&&m.isEnabled()&&m.isVisible);
   const position=hit?.hit?swimmer.position.add(delta.scale(Math.max(.65,hit.distance-.3))):desired;
@@ -166,14 +171,18 @@ export async function buildWorld(onProgress:(name:string,loaded:number)=>void=()
   for(let i=0;i<2;i++){const r=await model('storm-rain',Vector3.Zero(),1);r.setEnabled(false);rain.push(r);}
   for(const s of SITES){
     const group=new TransformNode('charted wreck '+s.id,scene);siteGroups.set(s.id,group);
-    const wreck=await model('ship-wreck',new Vector3(s.x,-s.depth,s.z),s.scale);wreck.rotation.y=s.angle;wreck.parent=group;
+    const wreck=await model('ship-wreck-cabined',new Vector3(s.x,-s.depth,s.z),s.scale);wreck.rotation.y=s.angle;wreck.parent=group;
     for(const m of wreck.getChildMeshes())m.checkCollisions=!m.name.includes('sail')&&!m.name.includes('grass');
+    const origin=cabinOrigin(s),room=await model('wreck-cabin',new Vector3(origin.x,origin.y,origin.z),1,group);room.rotation.y=s.angle;
+    for(const m of room.getChildMeshes())m.checkCollisions=m.name.includes('collision_');
+    const door=await model('wreck-cabin-door',new Vector3(-1.2,0,2.7),1,room);for(const m of door.getChildMeshes())m.checkCollisions=true;
+    const chain=await model('wreck-cabin-chain',Vector3.Zero(),1,room);cabins.set(s.id,{door,chain,open:false});
     const buoy=await model('buoy-flag',new Vector3(s.x,0,s.z),1.6);buoys.push(buoy);buoy.setEnabled(false);
     const line=MeshBuilder.CreateLines('buoy descent line',{points:[new Vector3(s.x,-.3,s.z),new Vector3(s.x,-s.depth+1,s.z)]},scene);line.color=new Color3(.57,.69,.58);line.setEnabled(false);discoveryBuoys.set(s.id,{buoy,line});
     for(let i=0;i<9;i++){const a=i*2.399,x=s.x+Math.cos(a)*(17+i),z=s.z+Math.sin(a)*(17+i);const rock=await model(i%2?'rocks-a':'rocks-b',new Vector3(x,floorHeight(x,z)-.3,z),1.1+(i%3)*.4);rock.rotation.y=a;rock.parent=group;}
     for(let i=0;i<6;i++){const f=await model('angelfish',Vector3.Zero(),.12+(i%3)*.015);f.parent=group;fish.push({root:f,center:new Vector3(s.x,-s.depth+7+(i%3)*2,s.z),phase:i*1.047+SITES.indexOf(s),radius:14+(i%3)*3});}
   }
-  for(const l of LOOT){const r=await model(l.model,new Vector3(...lootPosition(l)),l.model==='bottle'?2.3:l.model==='cannon'?1.1:1);r.rotation.y=SITES.find(s=>s.id===l.site)!.angle+.3;r.parent=siteGroups.get(l.site)!;lootRoots.set(l.id,r);}
+  for(const l of LOOT){const r=await model(l.model,new Vector3(...lootPosition(l)),l.cabin?(l.model==='bottle'?.65:.8):l.model==='bottle'?2.3:l.model==='cannon'?1.1:1);r.rotation.y=SITES.find(s=>s.id===l.site)!.angle+.3;r.parent=siteGroups.get(l.site)!;lootRoots.set(l.id,r);}
   // All representational scenery comes from the original matching nautical kits.
   for(const island of ISLANDS){
     const {x:cx,z:cz,size}=island,group=new TransformNode('charted island '+island.id,scene);islandGroups.set(island.id,group);
@@ -208,6 +217,7 @@ export function renderWorld(t:number,heading:number,diving:boolean,helmView=fals
   buoys.forEach((b,i)=>{b.position.y=Math.sin(t*1.1+i)*.12;b.rotation.z=Math.sin(t+i)*.04;});
   fish.forEach(f=>{const a=t*.17+f.phase;f.root.position.set(f.center.x+Math.cos(a)*f.radius,f.center.y+Math.sin(t*.6+f.phase)*.6,f.center.z+Math.sin(a)*f.radius*.7);f.root.rotation.set(0,-a+Math.PI*.5,Math.sin(t*4+f.phase)*.05);});
   ocean.setEnabled(!diving&&!harborActive);rain.forEach((r,i)=>{r.setEnabled(!diving&&!harborActive&&storm>.4);r.position.set(boat.position.x,2-((t*18)%25)+i*25,boat.position.z);});lamp.intensity=diving?.12:0;lamp.position.copyFrom(camera.position);lamp.direction.copyFrom(camera.getForwardRay().direction);
+  for(const c of cabins.values())c.door.rotation.y+=( (c.open?-Math.PI/2:0)-c.door.rotation.y)*.12;
   const deep=diving?Math.min(1,-swimmer.position.y/55):0;
   scene.fogColor=diving?Color3.Lerp(new Color3(.03,.36,.39),new Color3(.025,.12,.22),deep):harborActive?new Color3(.06,.15,.18):Color3.Lerp(new Color3(.58,.81,.88),new Color3(.13,.21,.27),storm);
   scene.fogDensity=harborActive?0:diving?.021+deep*.01:.0018+storm*.004;scene.clearColor=new Color4(scene.fogColor.r,scene.fogColor.g,scene.fogColor.b,1);

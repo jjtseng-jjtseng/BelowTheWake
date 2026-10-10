@@ -14,6 +14,7 @@ test('every level and the ending are reachable with earned upgrades and no manda
     for(const site of availableSites(s)){
       if(site.depth>depthRating(s))continue;
       s=exploreSite(s,site.id);
+      if(s.upgrades.includes('cutter')&&!s.openedCabins.includes(site.id))s={...s,openedCabins:[...s.openedCabins,site.id]};
       // Return and sell each valid find; never grant locked cargo or equipment.
       for(const find of LOOT.filter(l=>l.site===site.id)){
         if(salvageError(s,find.id,[])===null)s=sellCargo(bankDive(s,[find.id])).save;

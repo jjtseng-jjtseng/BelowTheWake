@@ -1,9 +1,9 @@
 import { LOOT, SITES, ISLANDS, BOSSES, lootFor, UPGRADES, type UpgradeId } from './data';
 import { level, migrateExplored } from './progression';
 import { newWeather, parseWeather, type Weather } from './weather';
-export interface Save { version:1; weather:Weather; money:number; upgrades:UpgradeId[]; collected:string[]; explored:string[]; islands:string[]; defeated:string[]; cargo:string[]; clues:string[]; completed:boolean; dives:number; earnings:number; started:boolean; guideSeen:boolean; boat:[number,number,number]; settings:{ sound:boolean; sensitivity:number; quality:'high'|'low'; boatView:'chase'|'helm'|'orbit'; diveView:'first'|'third' } }
+export interface Save { version:1; course:string|null; openedCabins:string[]; weather:Weather; money:number; upgrades:UpgradeId[]; collected:string[]; explored:string[]; islands:string[]; defeated:string[]; cargo:string[]; clues:string[]; completed:boolean; dives:number; earnings:number; started:boolean; guideSeen:boolean; boat:[number,number,number]; settings:{ sound:boolean; sensitivity:number; quality:'high'|'low'; boatView:'chase'|'helm'|'orbit'; diveView:'first'|'third' } }
 export const SAVE_KEY='below-the-wake-v1';
-export function newSave():Save { return {version:1,weather:newWeather(),money:0,upgrades:[],collected:[],explored:[],islands:[],defeated:[],cargo:[],clues:[],completed:false,dives:0,earnings:0,started:false,guideSeen:false,boat:[0,-105,0],settings:{sound:true,sensitivity:1,quality:'high',boatView:'chase',diveView:'third'}}; }
+export function newSave():Save { return {version:1,course:null,openedCabins:[],weather:newWeather(),money:0,upgrades:[],collected:[],explored:[],islands:[],defeated:[],cargo:[],clues:[],completed:false,dives:0,earnings:0,started:false,guideSeen:false,boat:[0,-105,0],settings:{sound:true,sensitivity:1,quality:'high',boatView:'chase',diveView:'third'}}; }
 export function parseSave(raw:string|null):Save {
   if(!raw)return newSave();
   try {
@@ -13,7 +13,8 @@ export function parseSave(raw:string|null):Save {
     const clean=(a:unknown):string[]=>Array.isArray(a)?[...new Set(a.filter(v=>typeof v==='string' && ids.has(v)))]:[];
     const upgrades=Array.isArray(x.upgrades)?[...new Set<UpgradeId>(x.upgrades.filter((u:UpgradeId)=>UPGRADES.some(v=>v.id===u)))]:[];
     const collected=clean(x.collected), cargo=clean(x.cargo).filter(id=>collected.includes(id));
-    return {...fresh,weather:parseWeather(x.weather),money:Math.floor(x.money),upgrades,collected,cargo,
+    const openedCabins=[...new Set<string>([...(Array.isArray(x.openedCabins)?x.openedCabins.filter((id:string)=>SITES.some(v=>v.id===id)):[]),...collected.flatMap(id=>{const l=lootFor(id);return l?.cabin?[l.site]:[];})])];
+    return {...fresh,course:typeof x.course==='string'&&['harbor',...SITES.map(v=>v.id),...ISLANDS.map(v=>v.id),...BOSSES.map(v=>v.id)].includes(x.course)?x.course:null,openedCabins,weather:parseWeather(x.weather),money:Math.floor(x.money),upgrades,collected,cargo,
       explored:[...new Set([...migrateExplored(collected),...(Array.isArray(x.explored)?x.explored.filter((id:string)=>SITES.some(v=>v.id===id)):[])])],
       islands:Array.isArray(x.islands)?[...new Set<string>(x.islands.filter((id:string)=>ISLANDS.some(v=>v.id===id)))]:[],
       defeated:Array.isArray(x.defeated)?[...new Set<string>(x.defeated.filter((id:string)=>BOSSES.some(v=>v.id===id)))]:[],
@@ -30,6 +31,7 @@ export function bagWeight(ids:string[]){return ids.reduce((n,id)=>n+(lootFor(id)
 export function salvageError(s:Save,id:string,bag:string[]):string|null {
   const l=lootFor(id); if(!l)return 'Unknown salvage.';
   if(s.collected.includes(id)||bag.includes(id))return 'Already recovered.';
+  if(l.cabin&&!s.openedCabins.includes(l.site))return s.upgrades.includes('cutter')?'Cut the cabin door and swim inside first.':'Needs salvage cutter to open the cabin.';
   if(l.requirement&&!s.upgrades.includes(l.requirement))return `Needs ${UPGRADES.find(u=>u.id===l.requirement)!.name.toLowerCase()}.`;
   if(l.final&&s.clues.length<2)return 'Find both route fragments to unlock the strongbox.';
   if(bagWeight(bag)+l.weight>bagCapacity(s))return 'Dive bag full. Return aboard to unload.';
@@ -37,7 +39,7 @@ export function salvageError(s:Save,id:string,bag:string[]):string|null {
 }
 export function bankDive(s:Save,bag:string[]):Save {
   const valid=[...new Set(bag)].filter(id=>lootFor(id)&&!s.collected.includes(id));
-  return {...s,collected:[...s.collected,...valid],explored:[...new Set([...s.explored,...migrateExplored(valid)])],cargo:[...s.cargo,...valid.filter(id=>(lootFor(id)?.value||0)>0)],
+  return {...s,openedCabins:[...new Set([...s.openedCabins,...valid.flatMap(id=>{const l=lootFor(id);return l?.cabin?[l.site]:[];})])],collected:[...s.collected,...valid],explored:[...new Set([...s.explored,...migrateExplored(valid)])],cargo:[...s.cargo,...valid.filter(id=>(lootFor(id)?.value||0)>0)],
     clues:[...new Set([...s.clues,...valid.flatMap(id=>{const c=lootFor(id)?.clue;return c?[c]:[];})])]};
 }
 export function sellCargo(s:Save):{save:Save;earned:number;final:boolean} {

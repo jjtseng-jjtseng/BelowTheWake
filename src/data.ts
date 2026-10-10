@@ -1,7 +1,8 @@
+import { cabinPoint } from './cabins';
 export type UpgradeId = 'air' | 'cutter' | 'suit' | 'bag' | 'fins' | 'sonar' | 'lift' | 'deep';
 export interface Upgrade { id: UpgradeId; name: string; price: number; description: string; effect: string; requires?: UpgradeId }
 export const UPGRADES: Upgrade[] = [
-  { id:'cutter', name:'Salvage cutter', price:120, description:'Open encrusted lockers and free netted cargo.', effect:'Unlock sealed salvage' },
+  { id:'cutter', name:'Salvage cutter', price:120, description:'Cut chained cabin doors and swim inside for individual finds.', effect:'Open wreck cabins' },
   { id:'air', name:'Twin air tanks', price:160, description:'More time to explore, less time watching the gauge.', effect:'Air: 150 → 240 seconds' },
   { id:'suit', name:'Reinforced dive suit', price:280, description:'Reach the Lantern and her cargo of lost keepsakes.', effect:'Depth rating: 22 → 36 m' },
   { id:'lift', name:'Deck salvage crane', price:180, description:'Fit a working deck davit and chain. Lift bags send heavy cargo straight aboard.', effect:'Recover cannons and heavy chests' },
@@ -45,7 +46,7 @@ export const BOSSES:SeaBoss[]=[
   {id:'ink-maw',name:'Ink Maw',kind:'kraken',x:-153,z:229,level:6,hp:180,damage:30,reward:650},
   {id:'old-king',name:'The Old King',kind:'kraken',x:189,z:338,level:9,hp:240,damage:35,reward:1000},
 ];
-export interface Loot { id:string; site:string; name:string; model:string; offset:[number,number,number]; value:number; weight:number; requirement?:UpgradeId; clue?:'finch'|'lantern'; final?:boolean; flavor:string }
+export interface Loot { id:string; site:string; name:string; model:string; offset:[number,number,number]; value:number; weight:number; requirement?:UpgradeId; cabin?:boolean; clue?:'finch'|'lantern'; final?:boolean; flavor:string }
 export const LOOT:Loot[] = [
   { id:'finch-copper',site:'finch',name:'Copper trade bars',model:'crate',offset:[-6,.5,-2],value:110,weight:1,flavor:'Salt-green copper. The workshop will polish it up.' },
   { id:'finch-coins',site:'finch',name:'A sailor’s savings',model:'chest',offset:[5,.5,5],value:140,weight:2,flavor:'A handful of foreign coins, tucked away for home.' },
@@ -74,9 +75,20 @@ for(const [site,prefix] of [['pearl','Smuggler'],['gull','Voyager'],['crown','Co
     {id:site+'-heavy',site,name:prefix+' bronze cannon',model:'cannon',offset:[10,.5,8],value:180+tier*55,weight:0,requirement:'lift',flavor:'Lift bag away. Another heavy find secured aboard.'},
   );
 }
+// Keep established IDs and values. Their cabin positions replace the old instant
+// cutter pickup; existing recovered treasure stays recovered during migration.
+for(const s of SITES){
+  const sealed=LOOT.find(l=>l.site===s.id&&l.requirement==='cutter')!;
+  sealed.cabin=true;delete sealed.requirement;sealed.offset=[-1.7,.55,-1.4];
+  const delicate=LOOT.find(l=>l.site===s.id&&/porcelain|glass|keepsakes|trade$/.test(l.id)&&l!==sealed&&!l.final);
+  if(delicate){delicate.cabin=true;delicate.offset=[1.65,.55,-1.35];}
+  const personal=(LOOT.find(l=>l.site===s.id&&l.clue)||LOOT.find(l=>l.site===s.id&&!l.cabin&&(l.id.endsWith('-coins')||l.id.endsWith('-china'))))!;
+  personal.cabin=true;personal.offset=[0,.8,-1.9];
+}
 export function siteFor(id:string) { return SITES.find(s=>s.id===id)!; }
 export function lootFor(id:string) { return LOOT.find(l=>l.id===id); }
 export function lootPosition(l:Loot):[number,number,number] {
   const s=siteFor(l.site), [x,y,z]=l.offset;
+  if(l.cabin){const p=cabinPoint(s,x,y,z);return [p.x,p.y,p.z];}
   return [s.x+x*Math.cos(s.angle)+z*Math.sin(s.angle),-s.depth+y,s.z+z*Math.cos(s.angle)-x*Math.sin(s.angle)];
 }
